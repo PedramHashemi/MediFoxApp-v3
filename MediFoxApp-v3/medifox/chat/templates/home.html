@@ -1,0 +1,28 @@
+
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/style_home.css' %}">
+    <title>Home</title>
+</head>
+<body>
+
+    <header>
+        <p>Username : {{ patient.username }}</p>
+        <p>Name : {{ patient.first_name }} {{ patient.last_name }}</p>
+        <a href="{% url 'logout' %}"><button>Logout</button></a>
+    </header>
+    
+    <main>
+        <a href=""><section>
+            <img src="{% static 'img/face.png' %}">
+            <p>{{ patient.first_name }}</p>
+        </section></a>
+    </main>
+
+</body>
+</html>

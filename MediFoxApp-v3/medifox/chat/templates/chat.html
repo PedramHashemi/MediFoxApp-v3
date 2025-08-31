@@ -1,0 +1,207 @@
+
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" /> -->
+    <link rel="stylesheet" href="{% static 'css/style0.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header>
+        <a href="{% url 'home' %}"><button>Back</button></a>
+        <div>
+            <img src="{% static 'img/face.png' %}">
+            <p>{{ patient.first_name }} {{ patient.last_name }}</p>
+        </div>
+    </header>
+
+    <div id="reversed_div" style="display: flex;flex-direction: column-reverse;margin: 0;padding: 0;border: 0;overflow: auto;max-width: 100%;">
+        <main id="messages-area">
+        </main>
+    </div>
+    <!-- Audio files -->
+    
+    <div class="overlay hide">
+        <div class="browser-not-supporting-audio-recording-box">
+            <p>To record audio, use browsers like Chrome and Firefox that support audio recording.</p>
+            <button type="button" class="close-browser-not-supported-box">Ok.</button>
+        </div>
+    </div>
+
+    <footer>
+        <textarea name="text" oninput="this.style.height = ''; this.style.height = this.scrollHeight +'px'" id="the-message-to-send"></textarea>
+        <button id="send-message-button">Send</button>
+        <button id="start-btn">Start Recording</button>
+        <button id="stop-btn" disabled style="display: none;">Stop Recording</button>
+        <!-- <div class="audio-recording-container">
+            <i id="start-recording-button" class="start-recording-button fa fa-microphone" aria-hidden="true"></i>
+                <div class="recording-contorl-buttons-container hide">
+                    <i id="cancel-recording-button" class="cancel-recording-button fa fa-times-circle-o" aria-hidden="true"></i>
+                        <div class="recording-elapsed-time">
+                            <i id="red-recording-dot" class="red-recording-dot fa fa-circle" aria-hidden="true"></i>
+                            <p class="elapsed-time"></p>
+                        </div>
+                    <i id="stop-recording-button" class="stop-recording-button fa fa-stop-circle-o" aria-hidden="true"></i>
+                </div>
+            <i class="play-button fa fa-play hide" aria-hidden="true"></i>
+        </div> -->
+        <!-- <audio controls class="audio-element hide"></audio> -->
+    </footer>
+
+
+
+    <script>
+        let recognizer;
+
+        function runSpeechToText() {
+            recognizer = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognizer.lang = 'en-US';
+            recognizer.continuous = true;
+            recognizer.interimResults = false;
+            
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stop-btn').style.display = 'inline';
+            document.getElementById('stop-btn').disabled = false;
+            
+            recognizer.onstart = () => {
+                console.log('Listening...');
+            };
+            
+            recognizer.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript;
+                console.log('Transcript:', transcript);
+                document.getElementById("the-message-to-send").value = transcript;
+            };
+            
+            recognizer.onerror = (event) => {
+                console.error('Speech recognition error', event);
+            };
+            
+            recognizer.start();
+        }
+
+        function stopSpeechToText() {
+            if (recognizer) {
+                recognizer.stop();
+                document.getElementById('start-btn').style.display = 'inline';
+                document.getElementById('stop-btn').style.display = 'none';
+                document.getElementById('stop-btn').disabled = true;
+                console.log('Stopped listening');
+            }
+        }
+        
+        document.getElementById('start-btn').addEventListener('click', runSpeechToText);
+        document.getElementById('stop-btn').addEventListener('click', stopSpeechToText);
+
+        const messages_area = document.getElementById("messages-area");
+        const text_area = document.getElementById("the-message-to-send");
+        const send_button = document.getElementById("send-message-button");
+        send_button.addEventListener("click", function(){
+
+            // Only publish non-empty messages
+            if (text_area.value.trim() !== '') {
+
+                var today = new Date();
+                var day = String(today.getDate()).padStart(2, '0');
+                var month = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+                var year = today.getFullYear();
+
+                var hour = today.getHours();
+                var minute = today.getMinutes();
+                var second = today.getSeconds();
+                var millisecond = today.getMilliseconds();
+                var timezone = today.getTimezoneOffset();
+
+                date = year + '-' + month + '-' + day;
+                time = hour + ':' + minute + ':' + second + '.' + millisecond;
+                show_time = hour + ':' + minute;
+
+                messages_area.insertAdjacentHTML(
+                    "beforeend",
+                    `
+                    <section class="from">
+                        <div class="details">
+                            <p>${date}</p>
+                            <div class="status"><div></div><div></div></div>
+                            <p>${show_time}</p>
+                        </div>
+                        <div class="message">
+                            <p style="overflow-wrap: anywhere;">${text_area.value.trim()}</p>
+                        </div>
+                    </section>
+                    `
+                );
+            };
+
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: `timestamp=${encodeURIComponent(date + ' ' + time)}&timezone=${encodeURIComponent(timezone)}&message=${encodeURIComponent(text_area.value.trim())}`
+            })
+            .then(response => {
+                if (!response.ok){
+                    console.log(response);
+                    throw new Error('Network response was not ok');
+                }
+                return response.json()
+            })
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                }
+                
+                var today = new Date();
+                var day = String(today.getDate()).padStart(2, '0');
+                var month = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+                var year = today.getFullYear();
+
+                var hour = today.getHours();
+                var minute = today.getMinutes();
+                var second = today.getSeconds();
+                var millisecond = today.getMilliseconds();
+                var timezone = today.getTimezoneOffset();
+
+                date = year + '-' + month + '-' + day;
+                show_time = hour + ':' + minute;
+                text_area.value = "";
+
+                messages_area.insertAdjacentHTML(
+                    "beforeend",
+                    `
+                    <section class="to">
+                        <div class="details">
+                            <p>${date}</p>
+                            <div class="status"><div></div><div></div></div>
+                            <p>${show_time}</p>
+                        </div>
+                        <div class="message">
+                            <p style="overflow-wrap: anywhere;">${data.medifox_message}</p>
+                        </div>
+                    </section>
+                    `
+                );
+
+                // Text-to-Speech for medifox_message
+                const utterance = new SpeechSynthesisUtterance(data.medifox_message);
+                utterance.lang = 'en-US'; // Set language
+                utterance.rate = 1; // Set speed (1 is normal)
+                utterance.pitch = 1; // Set pitch (1 is normal)
+                speechSynthesis.speak(utterance);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+        
+    </script>
+</body>
+</html>

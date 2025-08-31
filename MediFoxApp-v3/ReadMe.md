@@ -1,0 +1,4 @@
+- pip install uv
+- uv init medifox
+- uv run django-admin startproject medifox .
+- uv run manage.py runserver
