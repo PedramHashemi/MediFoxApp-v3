@@ -8,6 +8,9 @@ from langgraph.types import Command, interrupt
 from langgraph.graph import StateGraph, Start, End
 import random
 
+general_llm = 
+pharmacy_llm = 
+dermatology_llm = 
 
 class State(TypedDict):
     state: Annotated[list, add_messages]
@@ -43,6 +46,10 @@ def call_skin_lesion_recognizer() -> str:
 general_doctor_tools = ['call_human']
 pharmacist_tools = ['call_human']
 dermatologist_tools = ['call_human', 'call_skin_lesion_recognizer']
+
+llm_with_tools = general_llm.bind_tools(general_doctor_tools)
+llm_with_tools = pharmacy_llm.bind_tools(pharmacist_tools)
+llm_with_tools = dermatology_llm.bind_tools(dermatologist_tools)
 
 
 builder = StateGraph(State)
