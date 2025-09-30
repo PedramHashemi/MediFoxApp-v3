@@ -1,7 +1,7 @@
 from typing import Annotated
 from typing_extensions import TypedDict
 
-from langchain_openai import OpenAI
+from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.message import add_messages
@@ -10,15 +10,15 @@ from langgraph.types import Command, interrupt
 from langgraph.graph import StateGraph, START, END
 import random
 
-general_llm = OpenAI(
+general_llm = ChatOpenAI(
     base_url="http://localhost:8080/v1", # "http://<Your api-server IP>:port"
     api_key = "sk-no-key-required"
 )
-pharmacy_llm = OpenAI(
+pharmacy_llm = ChatOpenAI(
     base_url="http://localhost:8080/v1", # "http://<Your api-server IP>:port"
     api_key = "sk-no-key-required"
 )
-dermatology_llm = OpenAI(
+dermatology_llm = ChatOpenAI(
     base_url="http://localhost:8080/v1", # "http://<Your api-server IP>:port"
     api_key = "sk-no-key-required"
 )
@@ -53,6 +53,9 @@ def call_skin_lesion_recognizer() -> str:
     """
     return random.choice(["Benign", "Malignant", "Uncertain"])
 
+def call_reception(state: State) -> Command[str]:
+    pass
+
 def call_general_doctor(state: State) -> Command[str]:
     pass
 
@@ -62,15 +65,19 @@ def call_pharmacist(state: State) -> Command[str]:
 def call_dermatologist(state: State) -> Command[str]:
     pass
 
+def send_to_specialist(state: State) -> Command[str]:
+    pass
+
 general_doctor_tools = [call_human]
 pharmacist_tools = [call_human]
 dermatologist_tools = [call_human, call_skin_lesion_recognizer]
 
-# general_llm_with_tools = general_llm.bind_tools(general_doctor_tools)
-# pharmacy_llm_with_tools = pharmacy_llm.bind_tools(pharmacist_tools)
-# dermatology_llm_with_tools = dermatology_llm.bind_tools(dermatologist_tools)
+general_llm_with_tools = general_llm.bind_tools(general_doctor_tools)
+pharmacy_llm_with_tools = pharmacy_llm.bind_tools(pharmacist_tools)
+dermatology_llm_with_tools = dermatology_llm.bind_tools(dermatologist_tools)
 
 builder = StateGraph(State)
+builder.add_node("reception", call_reception)
 builder.add_node("general_doctor", call_general_doctor)
 builder.add_node("pharmacist", call_pharmacist)
 builder.add_node("dermatologist", call_dermatologist)
@@ -79,13 +86,24 @@ general_doctor_tool_node = ToolNode(tools = general_doctor_tools)
 pharmacist_tool_node = ToolNode(tools = pharmacist_tools)
 dermatologist_tool_node = ToolNode(tools = dermatologist_tools)
 
+builder.add_conditional_edge(
+    "reception",
+    send_to_specialist,
+    {
+        "general_doctor": "general_doctor",
+        "pharmacist": "pharmacist",
+        "dermatologist": "dermatologist",
+    } 
+)
+
 builder.add_node("general_doctor_tools", general_doctor_tool_node)
 builder.add_node("pharmacist_tools", pharmacist_tool_node)
 builder.add_node("dermatologist_tools", dermatologist_tool_node)
 
-builder.add_edge(START, "general_doctor")
-builder.add_edge("general_doctor", "pharmacist")
-builder.add_edge("general_doctor", "dermatologist")
+builder.add_edge(START, "reception")
+builder.add_edge("reception", "general_doctor")
+builder.add_edge("reception", "pharmacist")
+builder.add_edge("reception", "dermatologist")
 
 builder.add_edge("general_doctor", "general_doctor_tools")
 builder.add_edge("general_doctor_tools", "general_doctor")
