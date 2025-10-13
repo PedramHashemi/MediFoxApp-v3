@@ -44,7 +44,7 @@ def reception(state: State) -> Literal['general_doctor', 'pharmacist', 'dermatol
 
 
 def call_general_doctor(state: State) -> Command[str]:
-    pass
+    print("General doctor here ...")
 
 def call_pharmacist(state: State) -> Command[str]:
     question = "what are the side effects of alfosozin?"
