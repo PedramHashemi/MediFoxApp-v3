@@ -1,66 +1,20 @@
 """Define the agent graph for MediFox application."""
 
-from typing import Annotated, Literal
-from typing_extensions import TypedDict
-import random
+from typing import Literal
 
 from langchain_openai import ChatOpenAI
-from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from langgraph.types import Command, interrupt
+from langgraph.types import Command
 from langgraph.graph import StateGraph, START, END
-from langchain_chroma import Chroma
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
-from configuration import chroma_client
-
-reception_llm = ChatOpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key = "sk-no-key-required"
+from tools_and_schemas import call_human, call_skin_lesion_recognizer
+from configuration import (
+    chroma_client, State,
+    reception_llm, general_llm,
+    dermatology_llm
 )
-
-general_llm = ChatOpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key = "sk-no-key-required"
-)
-
-dermatology_llm = ChatOpenAI(
-    base_url="http://localhost:8080/v1",
-    api_key = "sk-no-key-required"
-)
-
-class State(TypedDict):
-    state: Annotated[list, add_messages]
-
-@tool
-def call_human(query: str) -> str:
-    """If you have any doubts, call the patient.
-    If you need more information, call the patient.
-    If you want to confirm something, call the patient.
-    If you want to narrow down the problem, call the patient to ask
-    complementary questions.
-
-    Args:
-        query (str): question
-
-    Returns:
-        str: human answer
-    """
-    human_message = interrupt({"query": query})
-    return human_message["data"]
-
-@tool
-def call_skin_lesion_recognizer() -> str:
-    """Call skin lesion recognizer tool if they ask you about
-    sking lession.
-
-    Returns:
-        str: skin lesion recognizer result
-    """
-    return random.choice(["Benign", "Malignant", "Uncertain"])
-
 
 
 def reception(state: State) -> Literal['general_doctor', 'pharmacist', 'dermatologist']:
@@ -115,17 +69,13 @@ def call_pharmacist(state: State) -> Command[str]:
     
 
 def call_dermatologist(state: State) -> Command[str]:
-    pass
-
-def send_to_specialist(state: State) -> Command[str]:
-    pass
+    print("Dermatologist here ...")
 
 general_doctor_tools = [call_human]
 pharmacist_tools = [call_human]
 dermatologist_tools = [call_human, call_skin_lesion_recognizer]
 
 general_llm_with_tools = general_llm.bind_tools(general_doctor_tools)
-
 dermatology_llm_with_tools = dermatology_llm.bind_tools(dermatologist_tools)
 
 builder = StateGraph(State)
@@ -140,7 +90,7 @@ dermatologist_tool_node = ToolNode(tools = dermatologist_tools)
 
 builder.add_conditional_edges(
     "reception",
-    send_to_specialist,
+    reception,
     {
         "general_doctor": "general_doctor",
         "pharmacist": "pharmacist",
