@@ -1,5 +1,6 @@
 from langchain_core.tools import tool
 from langgraph.types import interrupt
+import random
 
 @tool
 def call_human(query: str) -> str:
