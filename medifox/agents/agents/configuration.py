@@ -6,7 +6,6 @@ from typing import Annotated, TypedDict
 from langchain_openai import ChatOpenAI
 
 class State(TypedDict):
-    
     state: Annotated[list, add_messages]
 
 

@@ -41,10 +41,10 @@ def reception(state: State):
         You are only a receptionist. Your job is to route the patient to the right specialist.
         Keep the greetings and daily talks to a minimum and focus on the routing.
         If the question is about dermatology, return dermatologist.
-        If the question is about pharmacy, return pharmacist.
+        If the question is about pharmacy, return pharmacist. Otherwise, return general_doctor
         don't ask further questions.
-        return the result i the following JSON format: {{ "specialist": "<specialist>" }}
-        Otherwise, return general doctor. Here is the user question: {question}."""
+        return the result i the following JSON format: {{ "specialist": "<specialist>" }}.
+        Here is the user question: {question}."""
     )
 
     chain = prompt | reception_llm
@@ -155,6 +155,8 @@ if __name__ == "__main__":
     config = {"configurable": {"user_id": 1, "thread_id": 1}}
     # while True:
     input = {"messages": HumanMessage("I have a skin lesion that looks suspicious. What should I do?")}
+    input = {"messages": HumanMessage("I'm using a medication named alfusozin, What are the side effects of alfosozin?")}
+    input = {"messages": HumanMessage("I have a headache and fever. What should I do?")}
     print(chatter.invoke(input=input, config=config))
     # for event in chatter.stream(input=input, stream_mode=True, config=config):
     #     print(event[-1]["data"]["chunk"].content)
