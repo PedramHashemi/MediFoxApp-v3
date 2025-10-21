@@ -1,6 +1,21 @@
+""""""
+
+import random
 from langchain_core.tools import tool
 from langgraph.types import interrupt
-import random
+from langchain.tools.retriever import create_retriever_tool
+
+from configuration import chroma_retriever
+
+@tool
+def pharmacy_retriever_tool(query: str) -> str:
+    """Retrieve information from the pharmacy knowledge base."""
+    retrieved_docs = chroma_retriever.similarity_search(query, k=3)
+    serialized_docs = "\n".join(
+        (f"Source: {doc.metadata}, Content: {doc.page_content}")
+        for doc in retrieved_docs
+    )
+    return serialized_docs, retrieved_docs
 
 @tool
 def call_human(query: str) -> str:
